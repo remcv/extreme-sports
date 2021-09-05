@@ -1,5 +1,6 @@
 package SimiAlex.com.gitlab.extremesportsapp.security;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -8,25 +9,27 @@ import org.springframework.security.config.annotation.web.configuration.WebSecur
 import org.springframework.security.crypto.password.NoOpPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
+import javax.sql.DataSource;
+
 @EnableWebSecurity
 public class SecurityConfiguration extends WebSecurityConfigurerAdapter {
+
+    @Autowired
+    public DataSource dataSource;
+
     @Override
     protected void configure(AuthenticationManagerBuilder auth) throws Exception {
-        auth.inMemoryAuthentication()
-                .withUser("user1")
-                .password("password1")
-                .roles("USER")
-                .and()
-                .withUser("user2")
-                .password("password2")
-                .roles("ADMIN");
+        auth.jdbcAuthentication()
+                .dataSource(dataSource)
+                .usersByUsernameQuery("select username, password, enabled from users where username=?")
+                .authoritiesByUsernameQuery("select username, authority from authorities where username=?");
     }
 
     @Override
     protected void configure(HttpSecurity http) throws Exception {
         http.authorizeRequests()
-                .antMatchers("/sport_type/search**").hasAnyRole("USER", "ADMIN")
-                .antMatchers("/**").hasRole("ADMIN")
+                .antMatchers("/sport_type/search**").hasAnyAuthority("user", "admin")
+                .antMatchers("/**").hasAuthority("admin")
                 .and().formLogin();
     }
 
